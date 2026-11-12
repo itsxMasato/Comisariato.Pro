@@ -1,0 +1,198 @@
+import { Routes, Route, Navigate } from "react-router-dom";
+import ProtectedRoute from "../auth/ProtectedRoute";
+import AdminLayout from "../layouts/AdminLayout";
+import { RoleRoute } from "../auth/AdminRoute";
+import { ImportRoute } from "../auth/ImportRoute";
+import { MODULES } from "../utils/roles";
+
+import Login from "../pages/Login";
+import Dashboard from "../pages/Dashboard";
+import Error403 from "../pages/Error403";
+import Perfil from "../pages/Perfil";
+import { useAuth } from "../auth/AuthProvider";
+import AppMovil from "../pages/AppMovil"; // App Móvil Landing
+
+import { hasPermission } from "../utils/roles";
+
+const HomeRedirect = () => {
+  const { role, loading } = useAuth();
+  
+  if (loading) return null;
+
+  if (hasPermission(role, MODULES.DASHBOARD, "VIEW")) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <Navigate to="/app-movil" replace />;
+};
+
+// Productos
+import Productos from "../pages/Productos";
+
+// Empleados
+import Empleados from "../pages/Empleados";
+
+// Créditos
+import Creditos from "../pages/Creditos";
+import NuevoCredito from "../pages/NuevoCredito";
+
+// Cuotas
+import Cuotas from "../pages/Cuotas";
+import RegistrarPago from "../pages/RegistrarPago";
+
+// Reservas
+import Reservas from "../pages/Reservas";
+
+// Usuarios del sistema (solo admin)
+import Usuarios from "../pages/Usuarios";
+
+// Bitacora (solo admin)
+import Bitacora from "../pages/Bitacora";
+
+// Datos Variables (solo admin)
+import DatosVariables from "../pages/DatosVariables";
+
+// Importación desde Excel
+import ImportacionWizard from "../pages/importacion/ImportacionWizard";
+import HistorialImportaciones from "../pages/importacion/HistorialImportaciones";
+import { puedeVerImportaciones } from "../utils/roles";
+
+// El historial lo ve quien tiene IMPORTACIONES o IMPORT en algún módulo
+const ImportacionesRoute = ({ children }) => {
+  const { role, loading } = useAuth();
+  if (loading) return <p>Cargando...</p>;
+  return puedeVerImportaciones(role) ? children : <Error403 />;
+};
+
+export default function AppRouter() {
+  return (
+    <>
+      <Routes>
+        {/* Pública */}
+        <Route path="/login" element={<Login />} />
+
+        {/* Protegidas bajo AdminLayout */}
+        <Route
+          element={
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          {/* Dashboard */}
+          <Route path="/" element={<HomeRedirect />} />
+          
+          <Route path="/dashboard" element={
+            <RoleRoute moduleName={MODULES.DASHBOARD}>
+              <Dashboard />
+            </RoleRoute>
+          } />
+
+          <Route path="/app-movil" element={
+            <AppMovil />
+          } />
+          <Route path="/perfil" element={<Perfil />} />
+
+          {/* Productos */}
+          <Route path="/productos" element={
+            <RoleRoute moduleName={MODULES.PRODUCTOS}>
+              <Productos />
+            </RoleRoute>
+          } />
+
+          {/* Empleados */}
+          <Route path="/empleados" element={
+            <RoleRoute moduleName={MODULES.EMPLEADOS}>
+              <Empleados />
+            </RoleRoute>
+          } />
+
+          {/* Créditos */}
+          <Route path="/creditos" element={
+            <RoleRoute moduleName={MODULES.CREDITOS} requiredAction={"VIEW"}>
+              <Creditos />
+            </RoleRoute>
+          } />
+          <Route path="/creditos/nuevo" element={
+            <RoleRoute moduleName={MODULES.CREDITOS} requiredAction={"CREATE"}>
+              <NuevoCredito />
+            </RoleRoute>
+          } />
+
+          {/* Cuotas / Pagos */}
+          <Route path="/cuotas" element={
+            <RoleRoute moduleName={MODULES.CUOTAS} requiredAction={"VIEW"}>
+              <Cuotas />
+            </RoleRoute>
+          } />
+          <Route path="/cuotas/pagar" element={
+            <RoleRoute moduleName={MODULES.CUOTAS} requiredAction={"EDIT"}>
+              <RegistrarPago />
+            </RoleRoute>
+          } />
+
+          {/* Reservas (app móvil → portal) */}
+          <Route path="/reservas" element={
+            <RoleRoute moduleName={MODULES.RESERVAS}>
+              <Reservas />
+            </RoleRoute>
+          } />
+
+          {/* Usuarios del sistema — solo admin */}
+          <Route
+            path="/usuarios"
+            element={
+              <RoleRoute moduleName={MODULES.USUARIOS}>
+                <Usuarios />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/bitacora"
+            element={
+              <RoleRoute moduleName={MODULES.BITACORA}>
+                <Bitacora />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/datosvariables"
+            element={
+              <RoleRoute moduleName={MODULES.PARAMETROS}>
+                <DatosVariables />
+              </RoleRoute>
+            }
+          />
+
+          {/* Importación desde Excel (permiso IMPORT del módulo) */}
+          <Route
+            path="/importar/:modulo"
+            element={
+              <ImportRoute>
+                <ImportacionWizard />
+              </ImportRoute>
+            }
+          />
+
+          <Route
+            path="/importaciones"
+            element={
+              <ImportacionesRoute>
+                <HistorialImportaciones />
+              </ImportacionesRoute>
+            }
+          />
+
+          {/* 403 para rutas protegidas sin permiso */}
+          <Route path="/403" element={<Error403 />} />
+
+          {/* Catch-all dentro del layout */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Route>
+
+          {/* Catch-all global */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </>
+  );
+}
